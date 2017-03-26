@@ -126,3 +126,21 @@ write.csv(clark_plot_dat, 'clark_standard_model_plotting_table.csv')
 
 # Let's take a peek at what it looks like
 head(clark_plot_dat)
+
+###############################################################################
+# Clark Model + Additional 
+###############################################################################
+clark_more_plot_dat <- results_make[, c('make', 'clark_more_pred_prob_make')]
+
+# Sort clark_more_plot_dat by descending order of probability, with makes coming first
+clark_more_plot_dat <- clark_more_plot_dat %>% arrange(desc(clark_more_pred_prob_make), desc(make))
+
+# Make perfect information lift, no information lift, and model lift, add them 
+# to the table
+clark_more_plot_dat <- add_plot_info(clark_more_plot_dat)
+
+# Write the table to a csv file
+write.csv(clark_more_plot_dat, 'clark_moreended_model_plotting_table.csv')
+
+# Let's take a peek and what it looks like
+head(clark_more_plot_dat)
