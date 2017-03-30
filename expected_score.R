@@ -47,7 +47,7 @@ calc_next_score <- function(play_gid, play_pid, inspect = FALSE){
 
 # ------------------------------------------------------------------------------
 # ------------------------------------------------------------------------------
-# Homework 2 Expected scores from 1st and 10s with at least 25 minutes left in
+# HW2 Expected scores from 1st and 10s with at least 25 minutes left in
 # the half until the end of the half.
 
 calc_min_in_half <- function(play_row){
@@ -64,38 +64,52 @@ calc_min_in_half <- function(play_row){
 plays_df_filtered <- plays_df %>%
   select(gid, pid, off, def, pts, qtr)
 
-calc_scoring_until_half <- function(gid, pid, qtr, off, plays_df){
+calc_scoring_until_half <- function(play_row, plays_df){
+  print(play_row$gid)
   search_df <- plays_df %>%
-    filter(gid == gid,
-           pid >= pid,
-           qtr == qtr | qtr == qtr + 1) %>%
-    select(off, def, pts) %>%                                 
-    invoke_rows(calc_teams_scoring_until_half, ., off_of_int = off,
-                .collate = 'cols', .to = 'toi_score') # TOI = Team of interest
-  
-  sum(search_df$toi_score)
+    filter(gid == play_row$gid,
+           pid >= play_row$pid,
+           qtr == play_row$qtr | qtr == play_row$qtr + 1) %>%
+    by_row(calc_team_scoring_until_half, off_of_int = play_row$off,
+                .collate = 'cols', .to = 'toi_score') %>%
+  # TOI = Team of interest
+    filter(toi_score != 'bad')
+
+  return(c(sum(search_df$toi_score)))
 }
 
-calc_teams_scoring_until_half <- function(off_of_int, off, def, pts){
-  if (off_of_int == off){
-    return(pts)
-  } else if (off_of_int == def){
-    return(- pts)
+calc_team_scoring_until_half <- function(play_row, off_of_int){
+  if (off_of_int == play_row$off){
+    return(play_row$pts)
+  } else if (off_of_int == play_row$def){
+    return(- play_row$pts)
   } else {
-    print(sprintf("off of int: %s \n off: %s def: %s fuck", off_of_int, off, def))
+    if (play_row$pts != 0){
+      print('welp...')
+    }
+    # browser()
+    # print(sprintf("off of int: %s \n off: %s def: %s fuck", off_of_int, off, def))
+    return(play_row$pts)
   }
 }
 
+if (!exists('first_and_tens')){
+  first_and_tens <- plays_df %>% 
+    filter(dwn == 1,
+           ytg == 10,
+           qtr %in% c(1, 2, 3, 4),
+           def != off) %>%
+    by_row(calc_min_in_half, .collate = "cols", .to = "min_in_half") %>%
+    filter(min_in_half > 25) %>%
+    select(gid, pid, qtr, off, yfog)
+} else {
+  first_and_tens <- first_and_tens %>%
+    by_row(calc_scoring_until_half,
+                plays_df = plays_df_filtered,
+                .collate = "cols",
+                .to = "scoring_until_half")
+}
 
 
-first_and_tens <- plays_df %>% 
-  filter(dwn == 1,
-         ytg == 10,
-         qtr %in% c(1, 2, 3, 4)) %>%
-  by_row(calc_min_in_half, .collate = "cols", .to="min_in_half") %>%
-  filter(min_in_half > 25) %>%
-  select(gid, pid, qtr, off) %>%
-  invoke_rows(calc_scoring_until_half, ., 
-              plays_df=plays_df_filtered,
-              .collate="cols",
-              .to="scoring_until_half")
+
+
