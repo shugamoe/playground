@@ -65,7 +65,7 @@ plays_df_filtered <- plays_df %>%
   select(gid, pid, off, def, pts, qtr)
 
 calc_scoring_until_half <- function(play_row, plays_df){
-  print(play_row$gid)
+  # print(play_row$gid)
   search_df <- plays_df %>%
     filter(gid == play_row$gid,
            pid >= play_row$pid,
@@ -102,13 +102,39 @@ if (!exists('first_and_tens')){
     by_row(calc_min_in_half, .collate = "cols", .to = "min_in_half") %>%
     filter(min_in_half > 25) %>%
     select(gid, pid, qtr, off, yfog)
-} else {
+} else if(!"scoring_until_half" %in% names(first_and_tens)) {
   first_and_tens <- first_and_tens %>%
     by_row(calc_scoring_until_half,
                 plays_df = plays_df_filtered,
                 .collate = "cols",
                 .to = "scoring_until_half")
+} else {
+  table_of_int <- first_and_tens %>% 
+    group_by(yfog) %>% 
+    summarise(mean_score = mean(scoring_until_half),
+              n_obs = n()) %>% 
+    ungroup()
+  
+  exp_score_plot <- table_of_int %>%
+    ggplot(aes(yfog, mean_score)) +
+    geom_point() +
+    geom_smooth(method = 'lm') +
+    labs(title = 'Mean net Score until half by yard line',
+         x = 'Yard Line',
+         y = 'Mean Net Score Until Half')
+
+  n_obs_plot <- table_of_int %>%
+     ggplot(aes(yfog, n_obs)) +
+     geom_line() +
+     labs(title = 'Number of observations by yard line',
+            x = 'Yard Line',
+            y = '# Observations')
+  
+  print(exp_score_plot)
+  print(n_obs_plot)
 }
+
+
 
 
 
