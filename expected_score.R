@@ -1,6 +1,7 @@
 # R file to create model for expected number of points for next score
 library(tidyverse)
 library(purrr)
+library(modelr)
 
 
 if (!exists('plays_df')){
@@ -96,7 +97,7 @@ calc_team_scoring_until_half <- function(play_row, off_of_int){
 if (!exists('first_and_tens')){
   first_and_tens <- plays_df %>% 
     filter(dwn == 1,
-           ytg == 10,
+           ytg == 10 | yfog > 90,
            qtr %in% c(1, 2, 3, 4),
            def != off) %>%
     by_row(calc_min_in_half, .collate = "cols", .to = "min_in_half") %>%
@@ -109,13 +110,13 @@ if (!exists('first_and_tens')){
                 .collate = "cols",
                 .to = "scoring_until_half")
 } else {
-  table_of_int <- first_and_tens %>% 
+  mean_score_on_yd <- first_and_tens %>% 
     group_by(yfog) %>% 
     summarise(mean_score = mean(scoring_until_half),
               n_obs = n()) %>% 
     ungroup()
   
-  exp_score_plot <- table_of_int %>%
+  mean_score_plot <- mean_score_on_yd %>%
     ggplot(aes(yfog, mean_score)) +
     geom_point() +
     geom_smooth(method = 'lm') +
@@ -123,16 +124,27 @@ if (!exists('first_and_tens')){
          x = 'Yard Line',
          y = 'Mean Net Score Until Half')
 
-  n_obs_plot <- table_of_int %>%
+  n_obs_plot <- mean_score_on_yd %>%
      ggplot(aes(yfog, n_obs)) +
      geom_line() +
      labs(title = 'Number of observations by yard line',
             x = 'Yard Line',
             y = '# Observations')
   
-  print(exp_score_plot)
+  print(mean_score_plot)
   print(n_obs_plot)
 }
+
+
+exp_score_lm <- lm(mean_score ~ yfog, data = mean_score_on_yd)
+
+mean_score_on_yd %>%
+  write_csv('raw_mean_score_on_yd.csv')
+
+exp_score_table <- data_frame(yfog = 1:99) %>%
+  add_predictions(exp_score_lm, var = 'exp_net_score_till_half') %>%
+  write_csv('exp_score_table.csv')
+
 
 
 
