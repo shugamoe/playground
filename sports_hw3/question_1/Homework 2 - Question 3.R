@@ -20,7 +20,7 @@ library(tidyverse)
 ####################################
 # Set the working directory.
 # Load the Field Goal data into R and store data in a data frame.
-fg_df <- read.csv("NFL Field Goals 2000-2012.csv")
+fg_df <- read.csv("NFL Field Goals 2000-2011.csv")
 
 # Create a data frame which only includes kickers who kicked at least 200 times 
 # over the period 2000-2012
