@@ -48,21 +48,21 @@ fg_df <- fg_df %>%
 fg_df$DIST2 <- fg_df$DIST ^ 2
 fg_df$DIST3 <- fg_df$DIST ^ 3
 
-#Split fg_df into kicks taken over the period 2000-2012 and 2013-2016 for out of sample predictions
-fg_df.2000to2012 <- fg_df %>% filter(SEASON <= 2012)
-fg_df.2013to2016 <- fg_df %>% filter(SEASON >= 2013)
+#Split fg_df into kicks taken over the period 2000-2011 and 2012-2016 for out of sample predictions
+fg_df.2000to2011 <- fg_df %>% filter(SEASON <= 2011)
+fg_df.2012to2016 <- fg_df %>% filter(SEASON >= 2012)
 
 # Create season dummy variables. The first command creates a matrix of dummy 
 # variables while the second adds it to our data frame.
-fg_df.2000to2012$SEASON <- factor(fg_df.2000to2012$SEASON)
-fg_df.2013to2016$SEASON <- factor(fg_df.2013to2016$SEASON)
+fg_df.2000to2011$SEASON <- factor(fg_df.2000to2011$SEASON)
+fg_df.2012to2016$SEASON <- factor(fg_df.2012to2016$SEASON)
 
 #########################
 #####  Model (i)   ######
 #########################
 # Estimate Model i.
 logit.1 <- glm(MAKE ~ DIST + GRASS + COLD49 + WINDY + ALTITUDE + PRECIP, 
-               family = "binomial", data = fg_df.2000to2012)
+               family = "binomial", data = fg_df.2000to2011)
 summary.glm(logit.1)
 logLik(logit.1)
 
@@ -76,7 +76,7 @@ coeff.1 <- names(coef(logit.1))
 # an intercept then we must drop one of the kicker dummy variables.
 logit.2 <- glm(MAKE ~ NAME + DIST + DIST2 + DIST3 + SEASON + GRASS + COLD49 + 
                  WINDY + ALTITUDE + PRECIP - 1, 
-               family = "binomial", data = fg_df.2000to2012)
+               family = "binomial", data = fg_df.2000to2011)
 summary.glm(logit.2)
 logLik(logit.2)
 

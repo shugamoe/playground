@@ -5,7 +5,7 @@ GAME <- read.csv("nfl_00_16/GAME.csv")
 PLAYER <- read.csv("nfl_00_16/PLAYER.csv")
 
 # read in Clark data
-Clark <- read.csv("NFL FIeld Goals 2000-2011.csv")
+# Clark <- read.csv("NFL FIeld Goals 2000-2011.csv")
 
 # merge Armchair csv files to create field goal dataframe
 df <- merge(FGXP, PBP[,c("pid", "gid")], by="pid")
@@ -66,16 +66,20 @@ data$NAME <- df2$NAME
 #data$FG.OF.CAREER <- skip
 #data$SEASON.OF.CAREER <- skip
 
-# write the reconstructed data to a csv file
-write.csv(data, "NFL Field Goals 2000-2015.csv", row.names = FALSE)
-
 # constrict the reconstructed data to seasons 2000-2011
 data11 <- data[data$SEASON <= 2011,]
 print(paste("The reconstructed Clark data set contains", nrow(data11), "attempts."))
 
+# write the whole data to a csv file
+# write the reconstructed data to a csv file
+write.csv(data11, "NFL Field Goals 2000-2011.csv", row.names = FALSE)
+write.csv(data, "NFL Field Goals 2000-2016.csv", row.names = FALSE)
+
+
+
 # estimate Clark logistic regression on Clark data
-logit.clark<-glm(MAKE ~ DIST+GRASS+COLD49+WINDY+ALTITUDE+PRECIP, family = "binomial",data=Clark)
-summary.glm(logit.clark)
+# logit.clark<-glm(MAKE ~ DIST+GRASS+COLD49+WINDY+ALTITUDE+PRECIP, family = "binomial",data=Clark)
+# summary.glm(logit.clark)
 
 # estimate Clark logistic regression on reconstructed data from 2000-2011
 logit.reconstruct <- glm(MAKE ~ DIST+GRASS+COLD49+WINDY+ALTITUDE+PRECIP, family = "binomial",data=data11)
