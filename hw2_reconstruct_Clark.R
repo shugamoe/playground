@@ -1,5 +1,4 @@
 # read in Armchair data
-setwd("~/playground/sports_hw2/")
 FGXP <- read.csv("nfl_00_16/FGXP.csv")
 PBP <- read.csv("nfl_00_16/PBP.csv")
 GAME <- read.csv("nfl_00_16/GAME.csv")

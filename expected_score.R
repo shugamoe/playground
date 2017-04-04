@@ -66,7 +66,7 @@ plays_df_filtered <- plays_df %>%
   select(gid, pid, off, def, pts, qtr)
 
 calc_scoring_until_half <- function(play_row, plays_df){
-  # print(play_row$gid)
+  print(play_row$gid)
   search_df <- plays_df %>%
     filter(gid == play_row$gid,
            pid >= play_row$pid,
@@ -101,9 +101,9 @@ if (!exists('first_and_tens')){
            qtr %in% c(1, 2, 3, 4),
            def != off) %>%
     by_row(calc_min_in_half, .collate = "cols", .to = "min_in_half") %>%
-    filter(min_in_half > 25) %>%
+    filter(min_in_half >= 5) %>%
     select(gid, pid, qtr, off, yfog)
-} else if(!"scoring_until_half" %in% names(first_and_tens)) {
+} else if(!("scoring_until_half" %in% names(first_and_tens))) {
   first_and_tens <- first_and_tens %>%
     by_row(calc_scoring_until_half,
                 plays_df = plays_df_filtered,
