@@ -1,21 +1,20 @@
 ###################################################################
-###############    Sports Analytics Homework 2     ###############
-###############           Question 4                ###############  
-###############           Spring 2016               ###############  
+###############    Sports Analytics Homework 3    #################
+###############           Question 1               ###############  
+###############           Spring 2017            ###############  
 ###################################################################
 
-# This R code will use the 2000-2015 NFL field goal data constructed from the Armchair Analysis 
+# This R code will use the 2000-2016 NFL field goal data constructed from the Armchair Analysis 
 # data set to estimate models (i) and (ii) on kick attempts from the 2000-2011 seasons. 
 # This code will NOT provide the shrinkage estimation coefficients for model (iii). Rather, 
 # you are responsible for calculating these. The R code will calculate the w_i^2 and
 # the WT values necessary for you to construct the shrinkage estimation coefficients using the 
 # equation in Note 4 of Question 4.
-# The code will NOT perform the out-of-sample prediction on the 2012-2015 data for you. 
+# The code will NOT perform the out-of-sample prediction on the 2012-2016 data for you. 
 # For the out-of-sample prediction, you have two options:
 #   1) Extend the R code below to perform the out-of-sample prediction for models (i)-(iii).
 #   2) Perform the out-of-sample prediction for models (i)-(iii) outside of R (e.g., in Excel).
 #      The R code will output the regression estimates for models (i)-(ii) to allow you to do this.
-
 
 
 # Load package for running Wald tests.
@@ -142,10 +141,5 @@ write.csv(cbind(summary(logit.2)$coefficients[first_kicker_coef:last_kicker_coef
 ########################################
 ######  Out-of-Sample Regression  ######
 ########################################
-# Insert your code here to calculate out-of-sample predictions on the 2012-2015 data.
+# Insert your code here to calculate out-of-sample predictions on the 2012-2016 data.
 # Alternatively, use the above output to construct out-of-sample predictions outside of R.
-
-
-
-
-
