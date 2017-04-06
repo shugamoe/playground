@@ -4,53 +4,6 @@ library(purrr)
 library(modelr)
 
 
-if (!exists('plays_df')){
-  plays_df <- read_csv('nfl_00_16/PLAY.csv')
-}
-
-
-# TODO(jcm): Change this function, there are some mistakes in it. The 
-# pts is positive for off, negative for def, but who is offense and defense may
-# change.
-calc_next_score <- function(play_gid, play_pid, inspect = FALSE){
-  print(paste(play_gid, play_pid))
-  if (inspect){
-    browser()
-  }
-  
-  play <- plays_df %>% 
-    filter(gid == play_gid, pid == play_pid)
-  
-  # Check if the next score actually happened on the play in question
-  if (play$pts != 0){
-    return(play$pts) 
-  }
-  
-
-  search_df <- plays_df %>%
-    filter(gid == play$gid, 
-           qtr <= play$qtr,
-           pid > play$pid,
-           pts != 0)
-  
-  if (dim(search_df)[1] == 0){
-    return(0) # There was no next score (end of quarter, half, or game).
-  }
-
-  next_score_play <- search_df[1,]
-  next_score_play$pts
-}
-
-# plays_df %>% 
-#   # filter(gid == 1) %>%
-#   mutate(next_score = map2_dbl(.$gid, .$pid, ~ calc_next_score(.x, .y))) %>%
-#   write.csv('PLAY_NS.csv')
-
-# ------------------------------------------------------------------------------
-# ------------------------------------------------------------------------------
-# HW2 Expected scores from 1st and 10s with at least 25 minutes left in
-# the half until the end of the half.
-
 calc_min_in_half <- function(play_row){
   qtr <- play_row$qtr
   min <- play_row$min
@@ -62,24 +15,47 @@ calc_min_in_half <- function(play_row){
   }
 }
 
-plays_df_filtered <- plays_df %>%
-  select(gid, pid, off, def, pts, qtr)
+if (!exists('plays_df')){
+ games_df <- read_csv('nfl_00_16/GAME.csv') %>%
+    select(gid, h)
+ plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
+   merge(games_df, ., by = 'gid') %>%
+   by_row(calc_min_in_half, .collate = "cols", .to = "min_in_half")
+}
 
-calc_scoring_until_half <- function(play_row, plays_df){
+calc_scoring_until_reset <- function(play_row, plays_df){
   print(play_row$gid)
   search_df <- plays_df %>%
     filter(gid == play_row$gid,
            pid >= play_row$pid,
            qtr == play_row$qtr | qtr == play_row$qtr + 1) %>%
-    by_row(calc_team_scoring_until_half, off_of_int = play_row$off,
-                .collate = 'cols', .to = 'toi_score') %>%
+    by_row(calc_team_scoring_until_reset, off_of_int = play_row$off,
+                .collate = "cols", .to = "net_score") %>%
   # TOI = Team of interest
-    filter(toi_score != 'bad')
-
-  return(c(sum(search_df$toi_score)))
+    filter(net_score != 'bad')
+  
+  last_play <- tail(search_df, 1)
+  fg_td_only <- search_df %>%
+    filter(net_score != 2 & net_score != -2 & net_score != 0) 
+  
+  # browser()
+  if (nrow(fg_td_only) == 0){
+    fg_td_only <- fg_td_only %>%
+      bind_rows(last_play)
+    # browser()
+  }
+  next_score <- fg_td_only$net_score[1]
+  net_till_half_score <- sum(search_df$net_score)
+  time_elapsed <- play_row$min_in_half - fg_td_only$min_in_half[1]
+  
+  net_score_info <- c(net_till_half_score, next_score, time_elapsed)
+  if (any(is.na(net_score_info))){
+    browser()
+  }
+  c(net_till_half_score, next_score, time_elapsed)
 }
 
-calc_team_scoring_until_half <- function(play_row, off_of_int){
+calc_team_scoring_until_reset <- function(play_row, off_of_int){
   if (off_of_int == play_row$off){
     return(play_row$pts)
   } else if (off_of_int == play_row$def){
@@ -94,60 +70,32 @@ calc_team_scoring_until_half <- function(play_row, off_of_int){
   }
 }
 
-if (!exists('first_and_tens')){
-  first_and_tens <- plays_df %>% 
-    filter(dwn == 1,
+make_raw_exp_scores_table <- function(test = FALSE, plays_df){
+  force(plays_df)
+  if (!exists('first_and_tens')){
+    if (test){
+      gid_stop <- 1
+    } else {
+      gid_stop <- Inf
+    }
+    first_and_tens <- plays_df %>%
+      filter(dwn == 1,
            ytg == 10 | yfog > 90,
            qtr %in% c(1, 2, 3, 4),
-           def != off) %>%
-    by_row(calc_min_in_half, .collate = "cols", .to = "min_in_half") %>%
-    filter(min_in_half >= 5) %>%
-    select(gid, pid, qtr, off, yfog)
-} else if(!("scoring_until_half" %in% names(first_and_tens))) {
+           def != off,
+           gid <= gid_stop) %>%
+      select(gid, pid, qtr, min_in_half, min, sec, h, off, def, yfog, dseq)
+  }
+  # browser()
   first_and_tens <- first_and_tens %>%
-    by_row(calc_scoring_until_half,
-                plays_df = plays_df_filtered,
-                .collate = "cols",
-                .to = "scoring_until_half")
-} else {
-  mean_score_on_yd <- first_and_tens %>% 
-    group_by(yfog) %>% 
-    summarise(mean_score = mean(scoring_until_half),
-              n_obs = n()) %>% 
-    ungroup()
-  
-  mean_score_plot <- mean_score_on_yd %>%
-    ggplot(aes(yfog, mean_score)) +
-    geom_point() +
-    geom_smooth(method = 'lm') +
-    labs(title = 'Mean net Score until half by yard line',
-         x = 'Yard Line',
-         y = 'Mean Net Score Until Half')
-
-  n_obs_plot <- mean_score_on_yd %>%
-     ggplot(aes(yfog, n_obs)) +
-     geom_line() +
-     labs(title = 'Number of observations by yard line',
-            x = 'Yard Line',
-            y = '# Observations')
-  
-  print(mean_score_plot)
-  print(n_obs_plot)
+    by_row(calc_scoring_until_reset, plays_df = plays_df, .collate = "cols",
+           .to = "ex_score_info")  %>%
+    rename(net_score_to_half = ex_score_info1,
+           net_score_to_reset = ex_score_info2,
+           time_to_reset = ex_score_info3) %>%
+    mutate(drive_start = ifelse(dseq == 1, 1, 0))
+  first_and_tens
 }
 
-
-exp_score_lm <- lm(mean_score ~ yfog, data = mean_score_on_yd)
-
-mean_score_on_yd %>%
-  write_csv('raw_mean_score_on_yd.csv')
-
-exp_score_table <- data_frame(yfog = 1:99) %>%
-  add_predictions(exp_score_lm, var = 'exp_net_score_till_half') %>%
-  write_csv('exp_score_table.csv')
-
-
-
-
-
-
-
+first_and_tens <- make_raw_exp_scores_table(TRUE, plays_df)
+write_csv(first_and_tens, 'raw_fdowns_nscore_half_and_reset.csv')
