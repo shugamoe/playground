@@ -1,8 +1,8 @@
 # read in Armchair data
-FGXP <- read.csv("nfl_00_16/FGXP.csv")
-PBP <- read.csv("nfl_00_16/PBP.csv")
-GAME <- read.csv("nfl_00_16/GAME.csv")
-PLAYER <- read.csv("nfl_00_16/PLAYER.csv")
+FGXP <- read.csv("../nfl_00_16/FGXP.csv")
+PBP <- read.csv("../nfl_00_16/PBP.csv")
+GAME <- read.csv("../nfl_00_16/GAME.csv")
+PLAYER <- read.csv("../nfl_00_16/PLAYER.csv")
 
 # read in Clark data
 # Clark <- read.csv("NFL FIeld Goals 2000-2011.csv")
