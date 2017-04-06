@@ -31,8 +31,6 @@ calc_scoring_until_reset <- function(play_row, plays_df){
            qtr == play_row$qtr | qtr == play_row$qtr + 1) %>%
     by_row(calc_team_scoring_until_reset, off_of_int = play_row$off,
                 .collate = "cols", .to = "net_score") %>%
-  # TOI = Team of interest
-    filter(net_score != 'bad')
   
   last_play <- tail(search_df, 1)
   fg_td_only <- search_df %>%
