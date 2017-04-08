@@ -22,7 +22,9 @@ if (!exists('plays_df')){
    filter(qtr %in% c(1, 2, 3, 4)) %>%
    mutate(min_in_half = ifelse(qtr %in% c(2, 4), min + sec / 60,
                                ifelse(qtr %in% c(1,3), 
-                                      15 + min + sec / 60, 'not_possible'))) %>%
+                                      15 + min + sec / 60, 'not_possible')),
+          min_in_game = ifelse(qtr %in% c(2, 4), min_in_half,
+                               min_in_half + 15)) %>%
    merge(games_df, ., by = 'gid')
    plays_df$min_in_half <- as.numeric(plays_df$min_in_half)
 }
@@ -105,8 +107,10 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
            .to = "ex_score_info")  %>%
     rename(net_score_to_half = ex_score_info1,
            net_score_to_reset = ex_score_info2,
-           reset_min_in_half = ex_score_info3, 
-           time_to_reset = ex_score_info4) 
+           time_to_reset = ex_score_info4,
+           reset_min_in_half = ex_score_info3) %>%
+    mutate(reset_min_in_game = ifelse(qtr %in% c(1, 3), 15 + reset_min_in_half,
+                                     reset_min_in_half))
   first_and_tens
 }
 
