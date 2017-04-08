@@ -19,8 +19,12 @@ if (!exists('plays_df')){
  games_df <- read_csv('nfl_00_16/GAME.csv') %>%
     select(gid, h)
  plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
-   merge(games_df, ., by = 'gid') %>%
-   by_row(calc_min_in_half, .collate = "cols", .to = "min_in_half")
+   filter(qtr %in% c(1, 2, 3, 4)) %>%
+   mutate(min_in_half = ifelse(qtr %in% c(2, 4), min + sec / 60,
+                               ifelse(qtr %in% c(1,3), 
+                                      15 + min + sec / 60, 'not_possible'))) %>%
+   merge(games_df, ., by = 'gid')
+   plays_df$min_in_half <- as.numeric(plays_df$min_in_half)
 }
 
 calc_scoring_until_reset <- function(play_row, plays_df){
@@ -28,7 +32,7 @@ calc_scoring_until_reset <- function(play_row, plays_df){
   search_df <- plays_df %>%
     filter(gid == play_row$gid,
            pid >= play_row$pid,
-           qtr == play_row$qtr | qtr == play_row$qtr + 1) %>%
+           (qtr == play_row$qtr) | (qtr == play_row$qtr + 1)) %>%
     by_row(calc_net_scores, off_of_int = play_row$off,
                 .collate = "cols", .to = "net_score") 
   
