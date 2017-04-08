@@ -17,7 +17,7 @@ calc_min_in_half <- function(play_row){
 
 if (!exists('plays_df')){
  games_df <- read_csv('nfl_00_16/GAME.csv') %>%
-    select(gid, h)
+    select(gid, h, seas)
  plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
    filter(qtr %in% c(1, 2, 3, 4)) %>%
    mutate(min_in_half = ifelse(qtr %in% c(2, 4), min + sec / 60,
@@ -52,15 +52,18 @@ calc_scoring_until_reset <- function(play_row, plays_df){
   net_till_half_score <- sum(search_df$net_score)
   if ((first_play$net_score != 0 & first_play$net_score != -2 &
        first_play$net_score != 2)){
-    time_elapsed <- second_play$min_in_half - first_play$min_in_half
+    time_to_reset <- first_play$min_in_half - second_play$min_in_half 
+    reset_min_in_half <- second_play$min_in_half
   } else if (net_till_reset_score == 0){
-    time_elapsed <- play_row$min_in_half
+    time_to_reset <- play_row$min_in_half
+    reset_min_in_half <- 0 # 
   } else {
-    time_elapsed <- play_row$min_in_half - fg_td_only$min_in_half[1]
+    time_to_reset <- play_row$min_in_half - fg_td_only$min_in_half[1]
+    reset_min_in_half <- fg_td_only$min_in_half[1]
   }
   
-  net_score_info <- c(net_till_half_score, net_till_reset_score, time_elapsed)
-  if (length(net_score_info) != 3){
+  net_score_info <- c(net_till_half_score, net_till_reset_score, reset_min_in_half, time_to_reset)
+  if (length(net_score_info) != 4){
     browser()
   }
   net_score_info
@@ -83,28 +86,27 @@ calc_net_scores <- function(play_row, off_of_int){
 
 make_raw_exp_scores_table <- function(test = FALSE, plays_df){
   force(plays_df)
-  if (!exists('first_and_tens')){
-    if (test){
-      gid_stop <- 1
-    } else {
-      gid_stop <- Inf
-    }
-    first_and_tens <- plays_df %>%
-      filter(dwn == 1,
-           ytg == 10 | yfog > 90,
-           qtr %in% c(1, 2, 3, 4),
-           def != off,
-           gid <= gid_stop) %>%
-      select(gid, pid, qtr, min_in_half, min, sec, h, off, def, yfog, dseq)
+  if (test){
+    gid_stop <- 1
+  } else {
+    gid_stop <- Inf
   }
+  first_and_tens <- plays_df %>%
+    filter(dwn == 1,
+         ytg == 10 | yfog > 90,
+         qtr %in% c(1, 2, 3, 4),
+         def != off,
+         gid <= gid_stop) %>%
+    select(seas, gid, pid, qtr, min_in_half, min, sec, h, ptso, ptsd, off, def, yfog, dseq)
   # browser()
   first_and_tens <- first_and_tens %>%
+    mutate(drive_start = ifelse(dseq == 1, 1, 0)) %>%
     by_row(calc_scoring_until_reset, plays_df = plays_df, .collate = "cols",
            .to = "ex_score_info")  %>%
     rename(net_score_to_half = ex_score_info1,
            net_score_to_reset = ex_score_info2,
-           time_to_reset = ex_score_info3) %>%
-    mutate(drive_start = ifelse(dseq == 1, 1, 0))
+           reset_min_in_half = ex_score_info3, 
+           time_to_reset = ex_score_info4) 
   first_and_tens
 }
 
