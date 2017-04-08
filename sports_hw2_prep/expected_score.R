@@ -24,17 +24,19 @@ if (!exists('plays_df')){
 }
 
 calc_scoring_until_reset <- function(play_row, plays_df){
-  print(play_row$gid)
+  print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
   search_df <- plays_df %>%
     filter(gid == play_row$gid,
            pid >= play_row$pid,
            qtr == play_row$qtr | qtr == play_row$qtr + 1) %>%
-    by_row(calc_team_scoring_until_reset, off_of_int = play_row$off,
-                .collate = "cols", .to = "net_score") %>%
+    by_row(calc_net_scores, off_of_int = play_row$off,
+                .collate = "cols", .to = "net_score") 
   
+  first_play <- search_df[1,]
+  second_play <- search_df[2,]
   last_play <- tail(search_df, 1)
   fg_td_only <- search_df %>%
-    filter(net_score != 2 & net_score != -2 & net_score != 0) 
+    filter((net_score != 2 & net_score != -2) & (net_score != 0)) 
   
   # browser()
   if (nrow(fg_td_only) == 0){
@@ -42,18 +44,25 @@ calc_scoring_until_reset <- function(play_row, plays_df){
       bind_rows(last_play)
     # browser()
   }
-  next_score <- fg_td_only$net_score[1]
+  net_till_reset_score <- fg_td_only$net_score[1]
   net_till_half_score <- sum(search_df$net_score)
-  time_elapsed <- play_row$min_in_half - fg_td_only$min_in_half[1]
+  if ((first_play$net_score != 0 & first_play$net_score != -2 &
+       first_play$net_score != 2)){
+    time_elapsed <- second_play$min_in_half - first_play$min_in_half
+  } else if (net_till_reset_score == 0){
+    time_elapsed <- play_row$min_in_half
+  } else {
+    time_elapsed <- play_row$min_in_half - fg_td_only$min_in_half[1]
+  }
   
-  net_score_info <- c(net_till_half_score, next_score, time_elapsed)
-  if (any(is.na(net_score_info))){
+  net_score_info <- c(net_till_half_score, net_till_reset_score, time_elapsed)
+  if (length(net_score_info) != 3){
     browser()
   }
-  c(net_till_half_score, next_score, time_elapsed)
+  net_score_info
 }
 
-calc_team_scoring_until_reset <- function(play_row, off_of_int){
+calc_net_scores <- function(play_row, off_of_int){
   if (off_of_int == play_row$off){
     return(play_row$pts)
   } else if (off_of_int == play_row$def){
@@ -95,5 +104,5 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
   first_and_tens
 }
 
-first_and_tens <- make_raw_exp_scores_table(TRUE, plays_df)
+first_and_tens <- make_raw_exp_scores_table(FALSE, plays_df)
 write_csv(first_and_tens, 'raw_fdowns_nscore_half_and_reset.csv')
