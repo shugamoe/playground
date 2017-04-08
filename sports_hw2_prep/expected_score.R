@@ -21,8 +21,8 @@ if (!exists('plays_df')){
  plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
    filter(qtr %in% c(1, 2, 3, 4)) %>%
    mutate(min_in_half = ifelse(qtr %in% c(2, 4), min + sec / 60,
-                               ifelse(qtr %in% c(1,3), 
-                                      15 + min + sec / 60, 'not_possible')),
+                               ifelse(qtr %in% c(1,3),     # -100 shouldn't happen
+                                      15 + min + sec / 60, -100)),
           min_in_game = ifelse(qtr %in% c(2, 4), min_in_half,
                                min_in_half + 15)) %>%
    merge(games_df, ., by = 'gid')
@@ -99,7 +99,7 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
          qtr %in% c(1, 2, 3, 4),
          def != off,
          gid <= gid_stop) %>%
-    select(seas, gid, pid, qtr, min_in_half, min, sec, h, ptso, ptsd, off, def, yfog, dseq)
+    select(seas, gid, pid, qtr, min_in_game, min_in_half, min, sec, h, ptso, ptsd, off, def, yfog, dseq)
   # browser()
   first_and_tens <- first_and_tens %>%
     mutate(drive_start = ifelse(dseq == 1, 1, 0)) %>%
