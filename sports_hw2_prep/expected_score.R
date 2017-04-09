@@ -1,6 +1,7 @@
 # R file to create model for expected number of points for next score
 library(purrr)
 library(dplyr)
+library(readr)
 
 calc_min_in_half <- function(play_row){
   qtr <- play_row$qtr
