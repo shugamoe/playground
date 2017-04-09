@@ -2,6 +2,7 @@
 library(purrr)
 library(dplyr)
 library(readr)
+library(MASS)
 
 calc_min_in_half <- function(play_row){
   qtr <- play_row$qtr
@@ -27,6 +28,7 @@ plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
  plays_df$min_in_half <- as.numeric(plays_df$min_in_half)
 
 calc_scoring_until_reset <- function(play_row, plays_df){
+  print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
   # Get the current play, and all future plays within the same game that are in
   # the same half of the game.
   search_df <- plays_df %>%
@@ -132,6 +134,18 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
                                       ifelse(qtr %in% c(3, 4), reset_min_in_half,
                                              NA)))
   first_and_tens
+}
+
+convert_reset_time <- function(row){
+  full_time <- row$reset_min_in_game
+  
+  qtr <- full_time %/% 15
+  
+  qtr_time <- full_time - 15 * qtr 
+  qtr_min <- floor(qtr_time)
+  
+  qtr_sec <- NA
+  
 }
 
 first_and_tens <- make_raw_exp_scores_table(FALSE, plays_df)
