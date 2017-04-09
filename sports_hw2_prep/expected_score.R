@@ -15,22 +15,23 @@ calc_min_in_half <- function(play_row){
   }
 }
 
-if (!exists('plays_df')){
- games_df <- read_csv('nfl_00_16/GAME.csv') %>%
-    select(gid, h, seas)
- plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
-   filter(qtr %in% c(1, 2, 3, 4)) %>%
-   mutate(min_in_half = ifelse(qtr %in% c(2, 4), min + sec / 60,
-                               ifelse(qtr %in% c(1,3),     # -100 shouldn't happen
-                                      15 + min + sec / 60, -100)),
-          min_in_game = ifelse(qtr %in% c(2, 4), min_in_half,
-                               min_in_half + 15)) %>%
-   merge(games_df, ., by = 'gid')
-   plays_df$min_in_half <- as.numeric(plays_df$min_in_half)
-}
+games_df <- read_csv('nfl_00_16/GAME.csv') %>%
+  select(gid, h, seas)
+plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
+ filter(qtr %in% c(1, 2, 3, 4)) %>%
+ mutate(min_in_half = ifelse(qtr %in% c(2, 4), min + sec / 60,
+                             ifelse(qtr %in% c(1,3),     # -100 shouldn't happen
+                                    15 + min + sec / 60, -100)),
+        min_in_game = ifelse(qtr %in% c(3,4), min_in_half, 
+                             ifelse(qtr %in% c(1, 2), 30 + min_in_half, NA))) %>%
+ merge(games_df, ., by = 'gid')
+ plays_df$min_in_half <- as.numeric(plays_df$min_in_half)
 
 calc_scoring_until_reset <- function(play_row, plays_df){
   print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
+  
+  # Get the current play, and all future plays within the same game that are in
+  # the same half of the game.
   search_df <- plays_df %>%
     filter(gid == play_row$gid,
            pid >= play_row$pid,
@@ -38,32 +39,47 @@ calc_scoring_until_reset <- function(play_row, plays_df){
     by_row(calc_net_scores, off_of_int = play_row$off,
                 .collate = "cols", .to = "net_score") 
   
-  first_play <- search_df[1,]
-  second_play <- search_df[2,]
-  last_play <- tail(search_df, 1)
-  fg_td_only <- search_df %>%
-    filter((net_score != 2 & net_score != -2) & (net_score != 0)) 
   
-  # browser()
+  # We don't count a safety as a reset, only FGs and TD's + extra point(s)
+  fg_td_only <- search_df %>%
+    filter(net_score %in% c(-8, -7 , -6, -3, 3, 6, 7, 8)) 
+  
+  # If there wasn't a TD + extra point(s) or FG, we want to add the last play 
+  last_play <- tail(search_df, 1)
   if (nrow(fg_td_only) == 0){
     fg_td_only <- fg_td_only %>%
       bind_rows(last_play)
-    # browser()
-  }
-  net_till_reset_score <- fg_td_only$net_score[1]
-  net_till_half_score <- sum(search_df$net_score)
-  if ((first_play$net_score != 0 & first_play$net_score != -2 &
-       first_play$net_score != 2)){
-    time_to_reset <- first_play$min_in_half - second_play$min_in_half 
-    reset_min_in_half <- second_play$min_in_half
-  } else if (net_till_reset_score == 0){
+    net_till_reset_score <- last_play$net_score
     time_to_reset <- play_row$min_in_half
-    reset_min_in_half <- 0 # 
+    reset_min_in_half <- 0
+    # browser()
+    
+  # Otherwise, there was a TD + extra point(s) or FG before the half ended.
   } else {
-    time_to_reset <- play_row$min_in_half - fg_td_only$min_in_half[1]
-    reset_min_in_half <- fg_td_only$min_in_half[1]
+    reset_play <- fg_td_only[1,]
+    net_till_reset_score <- reset_play$net_score
+    
+    # If there was only one TD or FG before the half ended.
+    play_after_reset <- search_df %>% 
+      filter(pid == reset_play$pid + 1)
+    # If the TD or FG was the actually the last play of the half
+    if ((reset_play$qtr == 2) & (play_after_reset$qtr == 3)){
+      time_to_reset <- play_row$min_in_half
+      reset_min_in_half <- play_after_reset$min_in_half
+    # If the TD or FG was not the last play of the half
+    } else {
+      time_to_reset <- play_row$min_in_half - play_after_reset$min_in_half 
+      reset_min_in_half <- play_after_reset$min_in_half
+    }
   }
   
+  # It's possible that the last play of the half could be a safety. Let's check
+  # if that's the case. We didn't want to count safety's as
+  if (net_till_reset_score %in% c(2, -2)){
+    print('last play in half is safety?')
+    browser()
+  }
+  net_till_half_score <- sum(search_df$net_score)
   net_score_info <- c(net_till_half_score, net_till_reset_score, reset_min_in_half, time_to_reset)
   if (length(net_score_info) != 4){
     browser()
