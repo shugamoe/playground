@@ -137,16 +137,40 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
 }
 
 convert_reset_time <- function(row){
+  # browser()
   full_time <- row$reset_min_in_game
   
-  qtr <- full_time %/% 15
+  if (full_time > 45){
+    qtr <- 1
+  } else if (full_time > 30 & full_time <= 45){
+    qtr <- 2
+  } else if (full_time > 15 & full_time <= 30){
+    qtr <- 3
+  } else if (full_time > 0 & full_time <= 15){
+    qtr <- 4
+  }
   
-  qtr_time <- full_time - 15 * qtr 
+  qtr_time <- full_time - 15 * (4 - qtr)
   qtr_min <- floor(qtr_time)
-  
-  qtr_sec <- NA
-  
+ 
+  # Extract the second 
+  qtr_sec_dec <- qtr_time - qtr_min
+  if (qtr_sec_dec != 0){
+    qtr_sec_frac <- fractions(qtr_sec_dec)
+    num_denom <- as.numeric(unlist(strsplit(attr(qtr_sec_frac,"fracs"),"/")))
+    tsf <- 60 / num_denom[2]
+    qtr_sec <- num_denom[1] * tsf
+  } else {
+    qtr_sec <- 0
+  }
+    
+  reset_time_info <- c(qtr, qtr_min, qtr_sec)
+  reset_time_info
 }
 
-first_and_tens <- make_raw_exp_scores_table(FALSE, plays_df)
+first_and_tens <- make_raw_exp_scores_table(FALSE, plays_df) %>%
+  by_row(convert_reset_time, .collate = "cols", .to = "reset_time_info") %>%
+  rename(reset_qtr = reset_time_info1,
+         reset_min = reset_time_info2,
+         resset_sec = reset_time_info3)
 write_csv(first_and_tens, 'raw_fdowns_nscore_half_and_reset.csv')
