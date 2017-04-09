@@ -1,8 +1,6 @@
 # R file to create model for expected number of points for next score
-library(tidyverse)
 library(purrr)
-library(modelr)
-
+library(dplyr)
 
 calc_min_in_half <- function(play_row){
   qtr <- play_row$qtr
@@ -28,14 +26,14 @@ plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
  plays_df$min_in_half <- as.numeric(plays_df$min_in_half)
 
 calc_scoring_until_reset <- function(play_row, plays_df){
-  print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
-  
   # Get the current play, and all future plays within the same game that are in
   # the same half of the game.
   search_df <- plays_df %>%
     filter(gid == play_row$gid,
            pid >= play_row$pid,
-           (qtr == play_row$qtr) | (qtr == play_row$qtr + 1)) %>%
+           (qtr == play_row$qtr) | 
+             (qtr == ifelse(play_row$qtr %in% c(1, 3), play_row$qtr + 1, 
+                            play_row$qtr))) %>%
     by_row(calc_net_scores, off_of_int = play_row$off,
                 .collate = "cols", .to = "net_score") 
   
@@ -62,22 +60,26 @@ calc_scoring_until_reset <- function(play_row, plays_df){
     # If there was only one TD or FG before the half ended.
     play_after_reset <- search_df %>% 
       filter(pid == reset_play$pid + 1)
-    # If the TD or FG was the actually the last play of the half
-    if ((reset_play$qtr == 2) & (play_after_reset$qtr == 3)){
+    # If the TD or FG was the actually the last play of the game
+    if (nrow(play_after_reset) == 0){
       time_to_reset <- play_row$min_in_half
-      reset_min_in_half <- play_after_reset$min_in_half
+      reset_min_in_half <- 0
     # If the TD or FG was not the last play of the half
-    } else {
+    } else if (((reset_play$qtr == 2) & (play_after_reset$qtr == 3))){
+      time_to_reset <- play_row$min_in_half
+      reset_min_in_half <- 0
+    # If the TD or FG was not the last play of the half
+    } else { 
       time_to_reset <- play_row$min_in_half - play_after_reset$min_in_half 
       reset_min_in_half <- play_after_reset$min_in_half
     }
   }
   
   # It's possible that the last play of the half could be a safety. Let's check
-  # if that's the case. We didn't want to count safety's as
+  # if that's the case.
   if (net_till_reset_score %in% c(2, -2)){
     print('last play in half is safety?')
-    browser()
+    print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
   }
   net_till_half_score <- sum(search_df$net_score)
   net_score_info <- c(net_till_half_score, net_till_reset_score, reset_min_in_half, time_to_reset)
@@ -125,8 +127,9 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
            net_score_to_reset = ex_score_info2,
            time_to_reset = ex_score_info4,
            reset_min_in_half = ex_score_info3) %>%
-    mutate(reset_min_in_game = ifelse(qtr %in% c(1, 3), 15 + reset_min_in_half,
-                                     reset_min_in_half))
+    mutate(reset_min_in_game = ifelse(qtr %in% c(1, 2), 30 + reset_min_in_half,
+                                      ifelse(qtr %in% c(3, 4), reset_min_in_half,
+                                             NA)))
   first_and_tens
 }
 
