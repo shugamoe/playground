@@ -2,7 +2,6 @@
 library(purrr)
 library(dplyr)
 library(readr)
-library(MASS)
 
 calc_min_in_half <- function(play_row){
   qtr <- play_row$qtr
@@ -50,7 +49,13 @@ calc_scoring_until_reset <- function(play_row, plays_df){
   if (nrow(fg_td_only) == 0){
     fg_td_only <- fg_td_only %>%
       bind_rows(last_play)
-    net_till_reset_score <- last_play$net_score
+    reset_play <- last_play
+   
+    # Incorporate scores before reset point 
+    before_reset_plays <- search_df %>%
+      filter(pid < reset_play$pid & pid >= play_row$pid)
+    
+    net_till_reset_score <- reset_play$net_score + sum(before_reset_plays$net_score)
     time_to_reset <- play_row$min_in_half
     reset_min_in_half <- 0
     # browser()
@@ -58,7 +63,12 @@ calc_scoring_until_reset <- function(play_row, plays_df){
   # Otherwise, there was a TD + extra point(s) or FG before the half ended.
   } else {
     reset_play <- fg_td_only[1,]
-    net_till_reset_score <- reset_play$net_score
+    
+    # Incoporate scores before reset point.
+    before_reset_plays <- search_df %>%
+      filter(pid < reset_play$pid & pid >= play_row$pid)
+    
+    net_till_reset_score <- reset_play$net_score + sum(before_reset_plays$net_score)
     
     # If there was only one TD or FG before the half ended.
     play_after_reset <- search_df %>% 
@@ -81,7 +91,7 @@ calc_scoring_until_reset <- function(play_row, plays_df){
   # It's possible that the last play of the half could be a safety. Let's check
   # if that's the case.
   if (net_till_reset_score %in% c(2, -2)){
-    print('last play in half is safety?')
+    print('last play in half is safety? or safety between play and half?')
     print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
   }
   net_till_half_score <- sum(search_df$net_score)
