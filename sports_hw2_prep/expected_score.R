@@ -27,7 +27,7 @@ plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
  plays_df$min_in_half <- as.numeric(plays_df$min_in_half)
 
 calc_scoring_until_reset <- function(play_row, plays_df){
-  print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
+  # print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
   # Get the current play, and all future plays within the same game that are in
   # the same half of the game.
   search_df <- plays_df %>%
