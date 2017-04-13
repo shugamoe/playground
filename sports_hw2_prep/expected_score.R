@@ -2,6 +2,7 @@
 library(purrr)
 library(dplyr)
 library(readr)
+library(MASS)
 
 calc_min_in_half <- function(play_row){
   qtr <- play_row$qtr
@@ -15,7 +16,7 @@ calc_min_in_half <- function(play_row){
 }
 
 games_df <- read_csv('nfl_00_16/GAME.csv') %>%
-  select(gid, h, seas, wk)
+  dplyr::select(gid, h, seas, wk)
 plays_df <- read_csv('nfl_00_16/PLAY.csv') %>%
  filter(qtr %in% c(1, 2, 3, 4)) %>%
  mutate(min_in_half = ifelse(qtr %in% c(2, 4), min + sec / 60,
@@ -130,7 +131,7 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
          qtr %in% c(1, 2, 3, 4),
          def != off,
          gid <= gid_stop) %>%
-    select(seas, wk, gid, pid, qtr, min_in_game, min_in_half, min, sec, h, ptso, ptsd, off, def, yfog, dseq)
+    dplyr::select(seas, wk, gid, pid, qtr, min_in_game, min_in_half, min, sec, h, ptso, ptsd, off, def, yfog, dseq)
   # browser()
   first_and_tens <- first_and_tens %>%
     mutate(drive_start = ifelse(dseq == 1, 1, 0)) %>%
