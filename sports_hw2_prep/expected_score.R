@@ -157,7 +157,7 @@ convert_reset_time <- function(row){
     qtr <- 2
   } else if (full_time > 15 & full_time <= 30){
     qtr <- 3
-  } else if (full_time > 0 & full_time <= 15){
+  } else if (full_time >= 0 & full_time <= 15){
     qtr <- 4
   }
   
@@ -179,7 +179,7 @@ convert_reset_time <- function(row){
   reset_time_info
 }
 
-first_and_tens <- make_raw_exp_scores_table(FALSE, plays_df) %>%
+first_and_tens <- make_raw_exp_scores_table(TRUE, plays_df) %>%
   by_row(convert_reset_time, .collate = "cols", .to = "reset_time_info") %>%
   rename(reset_qtr = reset_time_info1,
          reset_min = reset_time_info2,
