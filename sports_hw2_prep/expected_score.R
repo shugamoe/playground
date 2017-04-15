@@ -95,9 +95,17 @@ calc_scoring_until_reset <- function(play_row, plays_df){
     print('last play in half is safety? or safety between play and half?')
     print(sprintf('g: %i | p: %i', play_row$gid, play_row$pid))
   }
+  if (reset_play$net_score < 0){
+    Reset_Team_to_Score <- -1
+  } else if (reset_play$net_score > 0){
+    Reset_Team_to_Score <- 1
+  } else {
+    Reset_Team_to_Score <- 0
+  }
+  
   net_till_half_score <- sum(search_df$net_score)
-  net_score_info <- c(net_till_half_score, net_till_reset_score, reset_min_in_half, time_to_reset)
-  if (length(net_score_info) != 4){
+  net_score_info <- c(net_till_half_score, net_till_reset_score, reset_min_in_half, time_to_reset, Reset_Team_to_Score)
+  if (length(net_score_info) != 5){
     browser()
   }
   net_score_info
@@ -143,7 +151,8 @@ make_raw_exp_scores_table <- function(test = FALSE, plays_df){
            reset_min_in_half = ex_score_info3) %>%
     mutate(reset_min_in_game = ifelse(qtr %in% c(1, 2), 30 + reset_min_in_half,
                                       ifelse(qtr %in% c(3, 4), reset_min_in_half,
-                                             NA)))
+                                             NA)),
+           Playoff = ifelse(wk >= 17, 1, 0))
   first_and_tens
 }
 
@@ -181,7 +190,62 @@ convert_reset_time <- function(row){
 
 first_and_tens <- make_raw_exp_scores_table(TRUE, plays_df) %>%
   by_row(convert_reset_time, .collate = "cols", .to = "reset_time_info") %>%
-  rename(reset_qtr = reset_time_info1,
-         reset_min = reset_time_info2,
-         resset_sec = reset_time_info3)
+  rename(# Time variables
+         Reset_qtr = reset_time_info1,
+         Reset_min = reset_time_info2,
+         Reset_sec = reset_time_info3,
+         # Other stuff John wants renamed
+         Season = seas,
+         Week = wk,
+         Armchair_gid = gid,
+         Armchair_pid = pid,
+         Qtr = qtr,
+         Min = min,
+         Sec = sec,
+         Min_left_in_half = min_in_half,
+         Min_left_in_game = min_in_game,
+         Pts_Off = ptso,
+         Pts_Def = ptsd,
+         Off = off,
+         Def = def,
+         Home = h,
+         Yfog = yfog,
+         Armchair_dsq = dseq,
+         Drive_start = drive_start,
+         Net_Score_to_Half = net_score_to_half,
+         Net_Score_to_Reset = net_score_to_reset,
+         Time_to_Reset = time_to_reset,
+         Min_Reset_to_Half = reset_min_in_half,
+         Min_Reset_to_GameEnd = reset_min_in_game,
+         Reset_Team_to_Score = ex_score_info5
+         ) %>%
+  dplyr::select(
+  Season,
+  Week,
+  Playoff,
+  Armchair_gid,
+  Armchair_pid,
+  Qtr,
+  Min,
+  Sec,
+  Min_left_in_half,
+  Min_left_in_game,
+  Pts_Off,
+  Pts_Def,
+  Off,
+  Def,
+  Home,
+  Yfog,
+  Armchair_dsq,
+  Drive_start,
+  Net_Score_to_Half,
+  Net_Score_to_Reset,
+  Reset_Team_to_Score,
+  Reset_qtr,
+  Reset_min,
+  Reset_sec,
+  Time_to_Reset,
+  Min_Reset_to_Half,
+  Min_Reset_to_GameEnd)
 write_csv(first_and_tens, 'raw_fdowns_nscore_half_and_reset.csv')
+
